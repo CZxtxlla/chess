@@ -11,14 +11,59 @@ function makeRandomMove() {
 
 }
 
+function orderMoves(moves) {
+    const pieceValues = {
+        'p': 100,
+        'r': 500,
+        'n': 320,
+        'b': 330,
+        'q': 900,
+        'k': 0
+    };
+
+    function isSquareAttackedByPawn(square, color) {
+        const squareIndex = chess.SQUARES[square];
+        const row = Math.floor(squareIndex / 8);
+        const col = squareIndex % 8;
+
+        if (color === 'w') {
+            return chess.get(squareIndex + 7) === 'p' || chess.get(squareIndex + 9) === 'p';
+        } else {
+            return chess.get(squareIndex - 7) === 'p' || chess.get(squareIndex - 9) === 'p';
+        }
+    }
+
+    function moveValue(move) {
+        let score = 0;
+        if (move.captured) {
+            score += 10 * pieceValues[move.captured] - pieceValues[move.piece];
+        }
+        if (move.promotion) {
+            score += pieceValues[move.promotion];
+        }
+
+        if (isSquareAttackedByPawn(move.to, move.color)) {
+            score -= pieceValues[move.piece];
+        }
+
+        return score;
+    }
+
+    return moves.sort((a, b) => {
+        const aValue = moveValue(a);
+        const bValue = moveValue(b);
+        return bValue - aValue; // Sort in descending order
+    })
+}
+
 // Function to evaluate the board position
 function evaluateBoard() {
     const pieceValues = {
-        'p': 1,
-        'r': 5,
-        'n': 3,
-        'b': 3,
-        'q': 9,
+        'p': 100,
+        'r': 500,
+        'n': 320,
+        'b': 330,
+        'q': 900,
         'k': 0
     };
 
@@ -51,8 +96,9 @@ function minimax(depth, alpha, beta, maximizing) {
     if (maximizing) {
         let maxEval = -Infinity;
         const moves = chess.moves();
+        const orderedMoves = orderMoves(moves);
 
-        for (let move of moves) {
+        for (let move of orderedMoves) {
             chess.move(move);
             const eval = minimax(depth - 1, alpha, beta, false);
             chess.undo();
@@ -66,8 +112,9 @@ function minimax(depth, alpha, beta, maximizing) {
     } else {
         let minEval = Infinity;
         const moves = chess.moves();
+        const orderedMoves = orderMoves(moves);
 
-        for (let move of moves) {
+        for (let move of orderedMoves) {
             chess.move(move);
             const eval = minimax(depth - 1, alpha, beta, true);
             chess.undo();
@@ -84,10 +131,11 @@ function minimax(depth, alpha, beta, maximizing) {
 
 function getBestMove(depth = 3) {
     const moves = chess.moves();
+    const orderedMoves = orderMoves(moves);
     let bestMove = null;
     let bestValue = Infinity;
 
-    for (let move of moves) {
+    for (let move of orderedMoves) {
         chess.move(move);
         const moveValue = minimax(depth - 1, -Infinity, Infinity, true);
         chess.undo();
