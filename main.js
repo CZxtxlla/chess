@@ -26,33 +26,5 @@ function onDrop(source, target) {
     });
 
     if (move === null) return 'snapback';
-    window.setTimeout(makeRandomMove, 250);
+    window.setTimeout(makeBestMove, 250);
 }
-
-
-function makeRandomMove() {
-    if (chess.game_over()) {
-        alert("Game over!");
-        return;
-    }
-
-    const moves = chess.moves();
-    const move = moves[Math.floor(Math.random() * moves.length)];
-    chess.move(move);
-    board.position(chess.fen());
-
-}
-
-/*
-document.getElementById('next-move').addEventListener('click', () => {
-    if (!chess.game_over()) {
-      const moves = chess.moves();
-      const move = moves[Math.floor(Math.random() * moves.length)];
-      chess.move(move);
-      board.position(chess.fen());
-    } else {
-      alert("Game over!");
-    }
-  });
-*/
-
