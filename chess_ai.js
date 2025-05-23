@@ -71,7 +71,7 @@ const pieceSquareTables = {
 
 function squareToIndex(square) {
     const file = square.charCodeAt(0) - 'a'.charCodeAt(0); // a=0, b=1, ..., h=7
-    const rank = 8 - parseInt(square[1]); // 8→0, 7→1, ..., 1→7
+    const rank = 8 - parseInt(square[1]); // 1=7, 2=6, ..., 8=0
     return rank * 8 + file; // 0–63
 }
 
@@ -81,25 +81,28 @@ function indexToSquare(index) {
     return file + rank;
 }
 
-
-
 function pieceSquareValue(piece, square, color) {
+    //console.log(`piece: ${piece}, square: ${square}, color: ${color}`);
     const pieceType = piece.toLowerCase();
-    const squareIndex = chess.SQUARES[square];
+    const squareIndex = squareToIndex(square);
+    let index = squareIndex;
 
-    let value = pieceSquareTables[pieceType][squareIndex];
-
-    // Adjust for color
     if (color === 'b') {
-        value = -value;
+        const row = Math.floor(squareIndex / 8);
+        const col = squareIndex % 8;
+        index = (7 - row) * 8 + col;
     }
+    //console.log(pieceType);
+    //console.log(index);
+    let value = pieceSquareTables[pieceType][index];
+    //console.log(value);
 
     // Adjust for endgame
     if (pieceType === 'k' && chess.game_over()) {
-        value = pieceSquareTables['k end'][squareIndex];
+        value = pieceSquareTables['k end'][index];
     }
 
-    return value;
+    return color === 'w' ? value : -value; // positive for white, negative for black
 }
 
 function isSquareAttackedByPawn(square, byColor) {
@@ -150,7 +153,7 @@ function orderMoves(moves) {
         if (move.promotion) {
             score += pieceValues[move.promotion];
         }
-        //console.log(move.to);
+        //console.log(move.to)
         if (isSquareAttackedByPawn(move.to, color === 'w' ? 'b' : 'w')) {
             score -= pieceValues[move.piece];
         }
@@ -172,16 +175,30 @@ function evaluateBoard() {
         'k': 0
     };
 
+    if (chess.in_checkmate()) {
+        return chess.turn() === 'w' ? -Infinity : Infinity;
+    } else if (chess.in_draw()) {
+        return 0;
+    }
+
     let totalValue = 0;
 
     const board = chess.board(); // 2D array: 8 rows of 8 squares
+    let rank = 0;
     for (let row of board) {
+        let file = 0;
         for (let square of row) {
             if (square) {
                 const pieceValue = pieceValues[square.type] * (square.color === 'w' ? 1 : -1);
                 totalValue += pieceValue;
+                
+                const squareName = String.fromCharCode('a'.charCodeAt(0) + rank) + (8 - file);
+                const psqValue = pieceSquareValue(square.type, squareName, square.color);
+                totalValue += psqValue * (square.color === 'w' ? 1 : -1);
             }
+            file++;
         }
+        rank++;
     }
 
     return totalValue;
@@ -194,7 +211,10 @@ function minimax(depth, alpha, beta, maximizing) {
         } else if (chess.in_draw()) {
             return 0;
         } else {
-            return evaluateBoard();
+            // Evaluate the board position
+            const evaluation = evaluateBoard();
+            //console.log(`Evaluation at depth ${depth}: ${evaluation}`);
+            return evaluation;
         }
     } 
 
