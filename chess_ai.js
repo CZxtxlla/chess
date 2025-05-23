@@ -69,49 +69,96 @@ const pieceSquareTables = {
     
 };
 
+function squareToIndex(square) {
+    const file = square.charCodeAt(0) - 'a'.charCodeAt(0); // a=0, b=1, ..., h=7
+    const rank = 8 - parseInt(square[1]); // 8→0, 7→1, ..., 1→7
+    return rank * 8 + file; // 0–63
+}
+
+function indexToSquare(index) {
+    const file = String.fromCharCode('a'.charCodeAt(0) + (index % 8));
+    const rank = 8 - Math.floor(index / 8);
+    return file + rank;
+}
+
+
+
+function pieceSquareValue(piece, square, color) {
+    const pieceType = piece.toLowerCase();
+    const squareIndex = chess.SQUARES[square];
+
+    let value = pieceSquareTables[pieceType][squareIndex];
+
+    // Adjust for color
+    if (color === 'b') {
+        value = -value;
+    }
+
+    // Adjust for endgame
+    if (pieceType === 'k' && chess.game_over()) {
+        value = pieceSquareTables['k end'][squareIndex];
+    }
+
+    return value;
+}
+
+function isSquareAttackedByPawn(square, byColor) {
+    const index = squareToIndex(square);
+    const row = Math.floor(index / 8);
+    const col = index % 8;
+    const directions = [];
+
+    if (byColor === 'w') {
+        if (row > 0 && col > 0) directions.push([row - 1, col - 1]);
+        if (row > 0 && col < 7) directions.push([row - 1, col + 1]);
+    } else {
+        if (row < 7 && col > 0) directions.push([row + 1, col - 1]);
+        if (row < 7 && col < 7) directions.push([row + 1, col + 1]);
+    }
+
+    for (const [r, c] of directions) {
+        const s = indexToSquare(r * 8 + c);
+        const piece = chess.get(s);
+        if (piece && piece.type === 'p' && piece.color === byColor) {
+            return true;
+        }
+    }
+
+    return false;
+}
+
+
 function orderMoves(moves) {
     const pieceValues = {
         'p': 100,
-        'r': 500,
         'n': 320,
         'b': 330,
+        'r': 500,
         'q': 900,
         'k': 0
     };
 
-    function isSquareAttackedByPawn(square, color) {
-        const squareIndex = chess.SQUARES[square];
-        const row = Math.floor(squareIndex / 8);
-        const col = squareIndex % 8;
-
-        if (color === 'w') {
-            return chess.get(squareIndex + 7) === 'p' || chess.get(squareIndex + 9) === 'p';
-        } else {
-            return chess.get(squareIndex - 7) === 'p' || chess.get(squareIndex - 9) === 'p';
-        }
-    }
+    const color = chess.turn();
 
     function moveValue(move) {
         let score = 0;
+
         if (move.captured) {
-            score += 10 * pieceValues[move.captured] - pieceValues[move.piece];
+            score += 10 * (pieceValues[move.captured] - pieceValues[move.piece]);
         }
+
         if (move.promotion) {
             score += pieceValues[move.promotion];
         }
-
-        if (isSquareAttackedByPawn(move.to, move.color)) {
+        //console.log(move.to);
+        if (isSquareAttackedByPawn(move.to, color === 'w' ? 'b' : 'w')) {
             score -= pieceValues[move.piece];
         }
 
         return score;
     }
 
-    return moves.sort((a, b) => {
-        const aValue = moveValue(a);
-        const bValue = moveValue(b);
-        return bValue - aValue; // Sort in descending order
-    })
+    return moves.sort((a, b) => moveValue(b) - moveValue(a)); // Sort in descending order
 }
 
 // Function to evaluate the board position
@@ -153,7 +200,7 @@ function minimax(depth, alpha, beta, maximizing) {
 
     if (maximizing) {
         let maxEval = -Infinity;
-        const moves = chess.moves();
+        const moves = chess.moves({ verbose: true });
         const orderedMoves = orderMoves(moves);
 
         for (let move of orderedMoves) {
@@ -169,7 +216,7 @@ function minimax(depth, alpha, beta, maximizing) {
         return maxEval;
     } else {
         let minEval = Infinity;
-        const moves = chess.moves();
+        const moves = chess.moves({ verbose: true });
         const orderedMoves = orderMoves(moves);
 
         for (let move of orderedMoves) {
@@ -188,7 +235,7 @@ function minimax(depth, alpha, beta, maximizing) {
 
 
 function getBestMove(depth = 3) {
-    const moves = chess.moves();
+    const moves = chess.moves({ verbose: true });
     const orderedMoves = orderMoves(moves);
     let bestMove = null;
     let bestValue = Infinity;
@@ -203,7 +250,7 @@ function getBestMove(depth = 3) {
             bestMove = move;
         }
     }
-    console.log(`Best move: ${bestMove}, Value: ${bestValue}`);
+    console.log(`Best move: ${bestMove.san}, Value: ${bestValue}`);
     return bestMove;
 }
 
