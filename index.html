@@ -1,7 +1,8 @@
 <!DOCTYPE html>
 <html lang="en">
-<head>
+  <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Chessboard + Chess.js</title>
 
     <!-- Chessboard.js CSS -->
@@ -23,8 +24,14 @@
     <script src="main.js" defer></script>
 
     <style>
+        body {
+          font-family: Arial, sans-serif;
+          text-align: center;
+          padding: 20px;
+        }
         #board {
-        width: 400px;
+        width: 90vw;
+        max-width: 400px;
         margin: 20px auto;
         }
         button {
@@ -32,8 +39,11 @@
         margin: 10px auto;
         }
     </style>
-</head>
-<body>
-  <div id="board"></div>
-</body>
+  </head>
+  <body>
+      <h2>Play Against the Chess AI</h2>
+      <div id="board"></div>
+      <button id="reset-btn">Reset Game</button>
+      <br>
+  </body>
 </html>

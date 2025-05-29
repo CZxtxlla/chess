@@ -7,11 +7,11 @@ function removeGreySquares () {
 }
 
 function greySquare (square) {
-var $square = $('#board .square-' + square)
+    var $square = $('#board .square-' + square)
 
-var background = whiteSquareGrey
-if ($square.hasClass('black-3c85d')) {
-    background = blackSquareGrey
+    var background = whiteSquareGrey
+    if ($square.hasClass('black-3c85d')) {
+        background = blackSquareGrey
 }
 
 $square.css('background', background)
@@ -79,6 +79,11 @@ function onMouseoutSquare (square, piece) {
 function onSnapEnd () {
     board.position(chess.fen())
 }
+
+document.getElementById('reset-btn').addEventListener('click', () => {
+    chess.reset();                // Reset game state
+    board.position('start');     // Reset board position
+});
 
 
 const board = ChessBoard('board', {
