@@ -1,5 +1,7 @@
 // Chess AI using Minimax with Alpha-Beta Pruning
 
+let minimaxCalls = 0;
+
 //piece square tables
 
 const pieceSquareTables = {
@@ -192,9 +194,9 @@ function evaluateBoard() {
                 const pieceValue = pieceValues[square.type] * (square.color === 'w' ? 1 : -1);
                 totalValue += pieceValue;
                 
-                const squareName = String.fromCharCode('a'.charCodeAt(0) + rank) + (8 - file);
+                const squareName = String.fromCharCode('a'.charCodeAt(0) + file) + (8 - rank);
                 const psqValue = pieceSquareValue(square.type, squareName, square.color);
-                totalValue += psqValue * (square.color === 'w' ? 1 : -1);
+                totalValue += psqValue //* (square.color === 'w' ? 1 : -1);
             }
             file++;
         }
@@ -205,6 +207,7 @@ function evaluateBoard() {
 }
 
 function minimax(depth, alpha, beta, maximizing) {
+    minimaxCalls++;
     if (depth == 0 || chess.game_over()) {
         if (chess.in_checkmate()) {
             return maximizing ? -Infinity : Infinity;
@@ -258,20 +261,40 @@ function getBestMove(depth = 3) {
     const moves = chess.moves({ verbose: true });
     const orderedMoves = orderMoves(moves);
     let bestMove = null;
-    let bestValue = Infinity;
+    minimaxCalls = 0;
+    if (chess.turn() === 'b') {
+        let bestValue = Infinity;
 
-    for (let move of orderedMoves) {
-        chess.move(move);
-        const moveValue = minimax(depth - 1, -Infinity, Infinity, true);
-        chess.undo();
+        for (let move of orderedMoves) {
+            chess.move(move);
+            const moveValue = minimax(depth - 1, -Infinity, Infinity, true);
+            chess.undo();
 
-        if (moveValue < bestValue) {
-            bestValue = moveValue;
-            bestMove = move;
+            if (moveValue < bestValue) {
+                bestValue = moveValue;
+                bestMove = move;
+            }
         }
+        console.log(`Best move: ${bestMove.san}, Value: ${bestValue}`);
+        console.log(`number of minimax calls: ${minimaxCalls}`);
+        return bestMove;
+    } else {
+        let bestValue = -Infinity;
+
+        for (let move of orderedMoves) {
+            chess.move(move);
+            const moveValue = minimax(depth - 1, -Infinity, Infinity, false);
+            chess.undo();
+
+            if (moveValue > bestValue) {
+                bestValue = moveValue;
+                bestMove = move;
+            }
+        }
+        console.log(`Best move: ${bestMove.san}, Value: ${bestValue}`);
+        console.log(`number of minimax calls: ${minimaxCalls}`);
+        return bestMove;
     }
-    console.log(`Best move: ${bestMove.san}, Value: ${bestValue}`);
-    return bestMove;
 }
 
 function makeBestMove() {
