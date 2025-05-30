@@ -1,4 +1,4 @@
-const chess = new Chess();
+const chess = new Chess(); //"8/3K4/4P3/8/8/8/6k1/7q w - - 0 1"
 var whiteSquareGrey = '#a9a9a9'
 var blackSquareGrey = '#696969'
 
@@ -29,6 +29,10 @@ function onDragStart (source, piece) {
 }
 
 function onDrop(source, target) {
+    if (chess.game_over()) {
+        alert("Game over!");
+        return;
+    }
     removeGreySquares()
 
     const moves = chess.moves({ verbose: true });
@@ -50,7 +54,7 @@ function onDrop(source, target) {
     });
 
     if (move === null) return 'snapback';
-    window.setTimeout(makeBestMove, 250);
+    window.setTimeout(makeBestMove, 100);
 }
 
 function onMouseoverSquare (square, piece) {

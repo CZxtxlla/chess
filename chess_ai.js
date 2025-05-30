@@ -83,7 +83,7 @@ function indexToSquare(index) {
     return file + rank;
 }
 
-function pieceSquareValue(piece, square, color) {
+function pieceSquareValue(piece, square, color, weight) {
     //console.log(`piece: ${piece}, square: ${square}, color: ${color}`);
     const pieceType = piece.toLowerCase();
     const squareIndex = squareToIndex(square);
@@ -94,14 +94,16 @@ function pieceSquareValue(piece, square, color) {
         const col = squareIndex % 8;
         index = (7 - row) * 8 + col;
     }
-    //console.log(pieceType);
-    //console.log(index);
+
     let value = pieceSquareTables[pieceType][index];
-    //console.log(value);
 
     // Adjust for endgame
-    if (pieceType === 'k' && chess.game_over()) {
-        value = pieceSquareTables['k end'][index];
+    if (pieceType === 'p' && weight > 0.7) {
+        value *= 2;
+    } else if (pieceType === 'k' && weight > 1.3) {
+        value = 0.25 * pieceSquareTables['k end'][index];
+    } else if (pieceType === 'k' && weight > 0.9) {
+        value = 0.5 * pieceSquareTables['k end'][index];
     }
 
     return color === 'w' ? value : -value; // positive for white, negative for black
@@ -130,6 +132,73 @@ function isSquareAttackedByPawn(square, byColor) {
     }
 
     return false;
+}
+
+function endgameWeight() {
+    const board = chess.board();
+    let queenCount = 0;
+    let nonPawnPieceCount = 0;
+
+    for (let row of board) {
+        for (let square of row) {
+            if (square) {
+                if (square.type === 'q') {
+                    queenCount++;
+                } else if (square.type !== 'p') {
+                    nonPawnPieceCount++;
+                }
+            }
+        }
+    }
+    if (nonPawnPieceCount <= 5 && queenCount === 0) {
+        return 2; // king and pawn endgame
+    } else if ((nonPawnPieceCount <= 8 && queenCount == 0) || (nonPawnPieceCount <= 6)) {
+        return 1; // endgame
+    } else if (nonPawnPieceCount <= 10) {
+        return 0.5; // middlegame
+    } else {
+        return 0; // opening
+    }
+}
+
+function forceKingToCornerEndgame(weight) {
+    const board = chess.board();
+    let opponentKingPos = null;
+    let friendlyKingPos = null;
+
+    for (let rank = 0; rank < 8; rank++) {
+        for (let file = 0; file < 8; file++) {
+            const square = board[rank][file];
+            if (square && square.type === 'k') {
+                if (square.color === 'w') {
+                    friendlyKingPos = [rank, file];
+                } else {
+                    opponentKingPos = [rank, file];
+                }
+            }
+        }
+    }
+
+    if (!opponentKingPos || !friendlyKingPos) return 0;
+
+    const opIdx = opponentKingPos[0] * 8 + opponentKingPos[1];
+    const frIdx = friendlyKingPos[0] * 8 + friendlyKingPos[1];
+    const opponentKingSquare = indexToSquare(opIdx);
+    const friendlyKingSquare = indexToSquare(frIdx);
+
+    const opponentKingDistToCentre =
+        Math.abs(opponentKingSquare.charCodeAt(0) - 'd'.charCodeAt(0)) +
+        Math.abs(opponentKingSquare[1] - '4');
+
+    let evaluation = opponentKingDistToCentre;
+
+    const distBetweenKings =
+        Math.abs(friendlyKingSquare.charCodeAt(0) - opponentKingSquare.charCodeAt(0)) +
+        Math.abs(friendlyKingSquare[1] - opponentKingSquare[1]);
+
+    evaluation += 14 - distBetweenKings;
+
+    return evaluation * weight;
 }
 
 
@@ -186,6 +255,7 @@ function evaluateBoard() {
     let totalValue = 0;
 
     const board = chess.board(); // 2D array: 8 rows of 8 squares
+    const endgameWeightFactor = endgameWeight();
     let rank = 0;
     for (let row of board) {
         let file = 0;
@@ -195,12 +265,22 @@ function evaluateBoard() {
                 totalValue += pieceValue;
                 
                 const squareName = String.fromCharCode('a'.charCodeAt(0) + file) + (8 - rank);
-                const psqValue = pieceSquareValue(square.type, squareName, square.color);
+                const psqValue = pieceSquareValue(square.type, squareName, square.color, endgameWeightFactor);
                 totalValue += psqValue //* (square.color === 'w' ? 1 : -1);
             }
             file++;
         }
         rank++;
+    }
+    // Endgame evaluation
+    if (endgameWeightFactor > 0) {
+        let value = 2 * forceKingToCornerEndgame(endgameWeightFactor);
+        console.log(`Endgame evaluation value: ${value}`);
+        if (chess.turn() === 'w') {
+            totalValue -= value;
+        } else {
+            totalValue += value;
+        }
     }
 
     return totalValue;
@@ -210,7 +290,7 @@ function minimax(depth, alpha, beta, maximizing) {
     minimaxCalls++;
     if (depth == 0 || chess.game_over()) {
         if (chess.in_checkmate()) {
-            let score = maximizing ? -99999 + (10 * depth) : 99999 - (10 * depth);
+            let score = maximizing ? -99999 - (10 * depth) : 99999 + (10 * depth);
             console.log(`Checkmate at depth ${depth}: ${score}`);
             return score;
         } else if (chess.in_draw()) {
@@ -308,4 +388,8 @@ function makeBestMove() {
     const bestMove = getBestMove();
     chess.move(bestMove);
     board.position(chess.fen());
+    if (chess.game_over()) {
+        alert("Game over!");
+        return;
+    }
 }
