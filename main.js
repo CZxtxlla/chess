@@ -89,6 +89,14 @@ document.getElementById('reset-btn').addEventListener('click', () => {
     board.position('start');     // Reset board position
 });
 
+document.getElementById('make-move-btn').addEventListener('click', () => {
+    if (chess.game_over()) {
+        alert("Game over!");
+        return;
+    }
+    makeBestMove();
+});
+
 
 const board = ChessBoard('board', {
     position: chess.fen(),
