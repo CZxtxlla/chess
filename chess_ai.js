@@ -178,7 +178,7 @@ function evaluateBoard() {
     };
 
     if (chess.in_checkmate()) {
-        return chess.turn() === 'w' ? -Infinity : Infinity;
+        return chess.turn() === 'w' ? -99999 : 99999;
     } else if (chess.in_draw()) {
         return 0;
     }
@@ -210,7 +210,9 @@ function minimax(depth, alpha, beta, maximizing) {
     minimaxCalls++;
     if (depth == 0 || chess.game_over()) {
         if (chess.in_checkmate()) {
-            return maximizing ? -Infinity : Infinity;
+            let score = maximizing ? -99999 + (10 * depth) : 99999 - (10 * depth);
+            console.log(`Checkmate at depth ${depth}: ${score}`);
+            return score;
         } else if (chess.in_draw()) {
             return 0;
         } else {
@@ -222,7 +224,7 @@ function minimax(depth, alpha, beta, maximizing) {
     } 
 
     if (maximizing) {
-        let maxEval = -Infinity;
+        let maxEval = -99999;
         const moves = chess.moves({ verbose: true });
         const orderedMoves = orderMoves(moves);
 
@@ -238,7 +240,7 @@ function minimax(depth, alpha, beta, maximizing) {
         }
         return maxEval;
     } else {
-        let minEval = Infinity;
+        let minEval = 99999;
         const moves = chess.moves({ verbose: true });
         const orderedMoves = orderMoves(moves);
 
@@ -263,11 +265,11 @@ function getBestMove(depth = 3) {
     let bestMove = null;
     minimaxCalls = 0;
     if (chess.turn() === 'b') {
-        let bestValue = Infinity;
+        let bestValue = 99999;
 
         for (let move of orderedMoves) {
             chess.move(move);
-            const moveValue = minimax(depth - 1, -Infinity, Infinity, true);
+            const moveValue = minimax(depth - 1, -99999, 99999, true);
             chess.undo();
 
             if (moveValue < bestValue) {
@@ -279,11 +281,11 @@ function getBestMove(depth = 3) {
         console.log(`number of minimax calls: ${minimaxCalls}`);
         return bestMove;
     } else {
-        let bestValue = -Infinity;
+        let bestValue = -99999;
 
         for (let move of orderedMoves) {
             chess.move(move);
-            const moveValue = minimax(depth - 1, -Infinity, Infinity, false);
+            const moveValue = minimax(depth - 1, -99999, 99999, false);
             chess.undo();
 
             if (moveValue > bestValue) {
