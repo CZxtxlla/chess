@@ -275,7 +275,7 @@ function evaluateBoard() {
     // Endgame evaluation
     if (endgameWeightFactor > 0) {
         let value = 2 * forceKingToCornerEndgame(endgameWeightFactor);
-        console.log(`Endgame evaluation value: ${value}`);
+        //console.log(`Endgame evaluation value: ${value}`);
         if (chess.turn() === 'w') {
             totalValue -= value;
         } else {
@@ -285,6 +285,58 @@ function evaluateBoard() {
 
     return totalValue;
 }
+
+function quiescence(alpha, beta, maximizing) {
+    // evaluate until poaition is stable (no more captures)
+    let score = evaluateBoard();
+    if (maximizing) {
+        if (score >= beta) {
+            return beta; 
+        }
+        if (alpha < score) {
+            alpha = score;
+        }
+    } else {
+        if (score <= alpha) {
+            return alpha; 
+        }
+        if (beta > score) {
+            beta = score;
+        }
+    }
+
+    let capturedMoves = chess.moves({ verbose: true }).filter(move => move.captured);
+    let orderedMoves = orderMoves(capturedMoves);
+
+    if (maximizing) {
+        for (let move of orderedMoves) {
+            chess.move(move);
+            score = quiescence(alpha, beta, false);
+            chess.undo();
+            if (score >= beta) {
+                return beta; 
+            }
+            if (alpha < score) {
+                alpha = score;
+            }
+        }
+        return alpha;
+    } else {
+        for (let move of orderedMoves) {
+            chess.move(move);
+            score = quiescence(alpha, beta, true);
+            chess.undo();
+            if (score <= alpha) {
+                return alpha; 
+            }
+            if (beta > score) {
+                beta = score;
+            }
+        }
+        return beta;
+    }
+}
+
 
 function minimax(depth, alpha, beta, maximizing) {
     minimaxCalls++;
@@ -297,9 +349,9 @@ function minimax(depth, alpha, beta, maximizing) {
             return 0;
         } else {
             // Evaluate the board position
-            const evaluation = evaluateBoard();
+            //const evaluation = evaluateBoard();
             //console.log(`Evaluation at depth ${depth}: ${evaluation}`);
-            return evaluation;
+            return quiescence(alpha, beta, maximizing);
         }
     } 
 
