@@ -1,6 +1,16 @@
 // Chess AI using Minimax with Alpha-Beta Pruning
 
 let minimaxCalls = 0;
+let transpositions = 0;
+let transpositionTable = {};
+
+function hashString(str) {
+    let hash = 5381;
+    for (let i = 0; i < str.length; i++) {
+        hash = ((hash << 5) + hash) + str.charCodeAt(i); // hash * 33 + c
+    }
+    return hash >>> 0; // unsigned 32-bit
+}
 
 //piece square tables
 
@@ -340,25 +350,56 @@ function quiescence(alpha, beta, maximizing) {
 
 function minimax(depth, alpha, beta, maximizing) {
     minimaxCalls++;
+    alphaOriginal = alpha;
+    betaOriginal = beta;
+
+    let key = hashString(chess.fen());
+
+    if (transpositionTable[key]) {
+        let entry = transpositionTable[key];
+        console.log('TT hit at depth', depth, 'key=', key, 'entry=', transpositionTable[key]);
+        transpositions++;
+        if (entry.depth >= depth) {
+            if (entry.type === 'exact') {
+                return entry.value; // exact value
+            } else if (entry.type === 'lowerbound') {
+                alpha = Math.max(alpha, entry.value);
+            } else if (entry.type === 'upperbound') {
+                beta = Math.min(beta, entry.value);
+            }
+            if (beta <= alpha) {
+                return entry.value; // alpha-beta cutoff
+            }
+        }
+    }
+
+    let score = 0;
+
     if (depth == 0 || chess.game_over()) {
         if (chess.in_checkmate()) {
-            let score = maximizing ? -99999 - (10 * depth) : 99999 + (10 * depth);
+            score = maximizing ? -99999 - (10 * depth) : 99999 + (10 * depth);
             console.log(`Checkmate at depth ${depth}: ${score}`);
-            return score;
         } else if (chess.in_draw()) {
-            return 0;
+            score = 0;
         } else {
             // Evaluate the board position
             //const evaluation = evaluateBoard();
             //console.log(`Evaluation at depth ${depth}: ${evaluation}`);
-            return quiescence(alpha, beta, maximizing);
+            score = quiescence(alpha, beta, maximizing);
         }
+        transpositionTable[key] = {
+            value: score,
+            depth: depth,
+            type: 'exact' // exact value
+        }
+        return score;
     } 
 
     if (maximizing) {
         let maxEval = -99999;
         const moves = chess.moves({ verbose: true });
         const orderedMoves = orderMoves(moves);
+
 
         for (let move of orderedMoves) {
             chess.move(move);
@@ -370,7 +411,8 @@ function minimax(depth, alpha, beta, maximizing) {
                 break; // Alpha-beta cutoff
             }
         }
-        return maxEval;
+        score = maxEval;
+
     } else {
         let minEval = 99999;
         const moves = chess.moves({ verbose: true });
@@ -386,8 +428,23 @@ function minimax(depth, alpha, beta, maximizing) {
                 break; // Alpha-beta cutoff
             }
         }
-        return minEval;
+        score = minEval;
     }
+    let entryType = null;
+    // Store the transposition table entry
+    if (score <= alphaOriginal) {
+        entryType = 'upperbound';
+    } else if (score >= betaOriginal) {
+        entryType = 'lowerbound';
+    } else {
+        entryType = 'exact';
+    }
+    transpositionTable[key] = {
+        value: score,
+        depth: depth,
+        type: entryType
+    };
+    return score;
 }
 
 
@@ -396,6 +453,7 @@ function getBestMove(depth = 3) {
     const orderedMoves = orderMoves(moves);
     let bestMove = null;
     minimaxCalls = 0;
+    transpositions = 0;
     if (chess.turn() === 'b') {
         let bestValue = 99999;
 
@@ -411,6 +469,7 @@ function getBestMove(depth = 3) {
         }
         console.log(`Best move: ${bestMove.san}, Value: ${bestValue}`);
         console.log(`number of minimax calls: ${minimaxCalls}`);
+        console.log(`number of transpositions: ${transpositions}`);
         return bestMove;
     } else {
         let bestValue = -99999;
